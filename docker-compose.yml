@@ -1,0 +1,94 @@
+### env
+#
+# WEBSERVER_FQDN
+# GITLAB_ROOT_PASSWORD
+# NODE_HOSTNAME
+
+version: "3.8"
+      
+configs:
+  gitlab_config:
+    name: gitlab_config_v25
+    external: true
+    
+services:
+
+  server:
+    image: gitlab/gitlab-ce:latest
+    #hostname: ${WEBSERVER_FQDN}
+    ports:
+      - "2222:22"
+    volumes:
+      - gitlab-data:/var/opt/gitlab
+      - gitlab-logs:/var/log/gitlab
+      - gitlab-config:/etc/gitlab
+    #shm_size: '256m'
+    environment:
+      GITLAB_ROOT_EMAIL: root@local.host
+      GITLAB_ROOT_PASSWORD: ${GITLAB_ROOT_PASSWORD}
+      GITLAB_OMNIBUS_CONFIG: "from_file('/omnibus_config.rb')"
+    configs:
+      - source: gitlab_config
+        target: /omnibus_config.rb
+    secrets:
+      - gitlab_root_password
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == ${NODE_HOSTNAME}
+      #resources:
+      #  limits:
+      #    cpus: '2'
+      #    memory: 4G
+      labels:
+        - traefik.enable=true
+        - traefik.port=80
+        - traefik.default.frontend.rule=Host:${WEBSERVER_FQDN},dockerhub.ligerosmart.com
+        - traefik.protocol=http
+        - traefik.docker.network=web
+        - traefik.frontend.headers.customResponseHeaders=access-control-allow-origin:*
+    networks:
+      - web
+      - default
+      
+      
+  runner:
+    image: gitlab/gitlab-runner:alpine
+    hostname: gitlab-runner-{{.Task.Slot}}
+    #container_name: gitlab-runner-{{.Task.Slot}}
+    environment:
+      TZ: America/Sao_Paulo
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner-config:/etc/gitlab-runner
+    deploy:
+      mode: replicated
+      replicas: 2
+      placement:
+        max_replicas_per_node: 1
+        constraints:
+          - node.role == worker
+          
+
+
+    
+networks:
+  web:
+    external: true
+    name: web
+    
+volumes:
+  gitlab-data:
+    driver: local
+  gitlab-logs:
+    driver: local
+  gitlab-config:
+    driver: local
+  runner-config:
+    driver: local
+  registry-data:
+    driver: local
+  registry-ssl:
+    driver: local

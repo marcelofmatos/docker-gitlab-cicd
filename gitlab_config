@@ -1,0 +1,69 @@
+external_url 'https://gitlab.localdomain/'
+nginx['listen_https'] = false
+nginx['listen_port'] = 80
+nginx['client_max_body_size'] = '2500m'
+gitlab_rails['initial_root_password'] = File.read('/run/secrets/gitlab_root_password').gsub("\n", "")
+
+gitlab_rails['ldap_enabled'] = true
+gitlab_rails['prevent_ldap_sign_in'] = false
+gitlab_rails['ldap_servers'] = {
+'main' => {
+  'label' => 'LDAP',
+  'host' =>  'ldap.server',
+  'port' => 389,
+  'uid' => 'uid',
+  'encryption' => 'plain',
+  'verify_certificates' => false,
+  'bind_dn' => 'cn=bind,ou=company,dc=local',
+  'password' => 'passw0rd',
+  'tls_options' => {
+    'ca_file' => '',
+    'ssl_version' => '',
+    'ciphers' => '',
+    'cert' => '',
+    'key' => ''
+  },
+  'timeout' => 10,
+  'active_directory' => true,
+  'allow_username_or_email_login' => true,
+  'block_auto_created_users' => false,
+  'base' => 'DC=company,DC=local',
+  'user_filter' => '',
+  'attributes' => {
+    'username' => ['uid', 'userid', 'sAMAccountName'],
+    'email' => ['mail', 'email', 'userPrincipalName'],
+    'name' => 'cn',
+    'first_name' => 'givenName',
+    'last_name' => 'sn'
+  },
+  'lowercase_usernames' => true,
+
+  # EE Only
+  'group_base' => '',
+  'admin_group' => '',
+  'external_groups' => [],
+  'sync_ssh_keys' => false
+  }
+}
+
+registry_external_url 'https://dockerhub.localdomain'
+
+### Settings used by GitLab application
+registry['enable'] = true
+registry['host'] = "dockerhub.localdomain"
+registry['registry_http_addr'] = 'localhost:5000'
+registry['api_url'] = 'http://localhost:5000'
+registry_nginx['enable'] = true
+registry_nginx['listen_port'] = 80
+registry_nginx['listen_https'] = false
+gitlab_rails['registry_host'] = "dockerhub.localdomain"
+#gitlab_rails['registry_path'] = "/var/opt/gitlab/gitlab-rails/shared/registry"
+gitlab_rails['registry_api_url'] = 'http://localhost:5000'
+gitlab_rails['registry_log_level'] = 'debug'
+registry_nginx['client_max_body_size'] = '2500m'
+registry_nginx['listen_https'] = false
+registry_nginx['proxy_set_headers'] = {
+  "X-Forwarded-Proto" => "https",
+  "X-Forwarded-Ssl" => "on"
+}
+
